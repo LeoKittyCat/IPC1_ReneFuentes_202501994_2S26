@@ -142,10 +142,13 @@ public class MenuPrincipal extends JFrame {
             return;
         }
 
-        JOptionPane.showMessageDialog(
-                this,
-                "La ventana del juego se agregará después"
-        );
+        VentanaSeleccionPiloto ventana =
+                new VentanaSeleccionPiloto(
+                        this,
+                        gestionPilotos
+                );
+
+        ventana.setVisible(true);
     }
 
     // =========================
