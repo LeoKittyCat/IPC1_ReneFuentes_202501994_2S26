@@ -18,9 +18,6 @@ public class PanelJuego extends JPanel {
     // TIEMPO DE PARTIDA
     // =========================
 
-    private Timer timerPartida;
-
-    private int tiempoRestante = 60;
     private boolean partidaFinalizada = false;
 
     // =========================
@@ -29,6 +26,17 @@ public class PanelJuego extends JPanel {
 
     private Piloto piloto;
     private GestionPartidas gestionPartidas;
+    
+    // =========================
+    // VIDAS DEL JUGADOR
+    // =========================
+
+    private int vidas = 3;
+
+    // Evita perder varias vidas por una misma colisión
+    private boolean naveInvulnerable = false;
+
+    private Timer timerInvulnerabilidad;
 
     // =========================
     // POSICIÓN Y TAMAÑO
@@ -75,28 +83,6 @@ public class PanelJuego extends JPanel {
         iniciarMovimiento();
         iniciarGeneracionEnemigos();
         iniciarGeneracionObjetos();
-        iniciarTemporizadorPartida();
-    }
-    
-    // =========================
-    // TEMPORIZADOR DE PARTIDA
-    // =========================
-
-    private void iniciarTemporizadorPartida() {
-
-        // Disminuye el tiempo una vez por segundo
-        timerPartida = new Timer(1000, e -> {
-
-            tiempoRestante--;
-
-            if (tiempoRestante <= 0) {
-                finalizarPartida();
-            }
-
-            repaint();
-        });
-
-        timerPartida.start();
     }
 
     // =========================
@@ -224,6 +210,7 @@ public class PanelJuego extends JPanel {
 
             detectarColisiones();
             detectarColisionesConObjetos();
+            detectarColisionNaveEnemigos();
 
             eliminarProyectilesInactivos();
             eliminarEnemigosInactivos();
@@ -285,6 +272,77 @@ public class PanelJuego extends JPanel {
 
         // Inicia el hilo independiente del enemigo
         nuevoEnemigo.start();
+    }
+    
+    // =========================
+    // COLISIÓN NAVE Y ENEMIGOS
+    // =========================
+
+    private void detectarColisionNaveEnemigos() {
+
+        // No revisa colisiones durante el tiempo de protección
+        if (naveInvulnerable || partidaFinalizada) {
+            return;
+        }
+
+        for (int i = 0; i < cantidadEnemigos; i++) {
+
+            Enemigo enemigo = enemigos[i];
+
+            if (enemigo == null || !enemigo.isActivo()) {
+                continue;
+            }
+
+            if (naveTocaEnemigo(enemigo)) {
+
+                // El enemigo desaparece después del choque
+                enemigo.detener();
+
+                vidas--;
+
+                // Regresa la nave a su posición inicial
+                naveX = 80;
+                naveY = getHeight() / 2;
+
+                if (vidas <= 0) {
+                    finalizarPartida();
+                } else {
+                    activarInvulnerabilidad();
+                }
+
+                // Solo permite perder una vida por revisión
+                break;
+            }
+        }
+    }
+
+    private boolean naveTocaEnemigo(Enemigo enemigo) {
+
+        return naveX < enemigo.getPosicionX() + enemigo.getAncho()
+                && naveX + anchoNave > enemigo.getPosicionX()
+                && naveY < enemigo.getPosicionY() + enemigo.getAlto()
+                && naveY + altoNave > enemigo.getPosicionY();
+    }
+    
+    // =========================
+    // PROTECCIÓN DESPUÉS DEL GOLPE
+    // =========================
+
+    private void activarInvulnerabilidad() {
+
+        naveInvulnerable = true;
+
+        if (timerInvulnerabilidad != null) {
+            timerInvulnerabilidad.stop();
+        }
+
+        // Después de un segundo puede volver a recibir daño
+        timerInvulnerabilidad = new Timer(1000, e -> {
+            naveInvulnerable = false;
+        });
+
+        timerInvulnerabilidad.setRepeats(false);
+        timerInvulnerabilidad.start();
     }
     
     // =========================
@@ -460,7 +518,7 @@ public class PanelJuego extends JPanel {
         // Limpia el dibujo anterior antes de volver a pintar
         super.paintComponent(g);
         
-        dibujarTiempo(g);
+        dibujarVidas(g);
         dibujarEstrellas(g);
         dibujarEnemigos(g);
         dibujarObjetosEspaciales(g);
@@ -470,17 +528,16 @@ public class PanelJuego extends JPanel {
     }
     
     // =========================
-    // DIBUJO DEL TIEMPO
+    // DIBUJO DE VIDAS
     // =========================
 
-    private void dibujarTiempo(Graphics g) {
+    private void dibujarVidas(Graphics g) {
 
         g.setColor(Color.WHITE);
 
-        // Coloca el tiempo cerca de la esquina superior derecha
         g.drawString(
-                "Tiempo: " + tiempoRestante,
-                getWidth() - 100,
+                "Vidas: " + vidas,
+                getWidth() - 80,
                 20
         );
     }
@@ -642,6 +699,14 @@ public class PanelJuego extends JPanel {
     // =========================
 
     private void dibujarNave(Graphics g) {
+        
+        // Oculta la nave por pequeños momentos después de recibir daño
+        // Osease un parpadeo asi bien chilero
+        if (naveInvulnerable
+                && System.currentTimeMillis() % 200 < 100) {
+
+            return;
+        }
 
         // Selecciona el color según el modelo de nave
         switch (piloto.getTipoNave()) {
@@ -1044,6 +1109,10 @@ public class PanelJuego extends JPanel {
         // =========================
 
         private void detenerJuego() {
+            
+            if (timerInvulnerabilidad != null) {
+                timerInvulnerabilidad.stop();
+            }
 
             if (timerMovimiento != null) {
                 timerMovimiento.stop();
@@ -1059,10 +1128,6 @@ public class PanelJuego extends JPanel {
 
             if (timerBloqueo != null) {
                 timerBloqueo.stop();
-            }
-
-            if (timerPartida != null) {
-                timerPartida.stop();
             }
 
             // Detiene los proyectiles que siguen en pantalla

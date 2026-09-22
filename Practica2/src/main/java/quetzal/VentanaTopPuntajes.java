@@ -1,16 +1,16 @@
 package quetzal;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
+import java.awt.GridLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableModel;
-import java.awt.GridLayout;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -25,9 +25,6 @@ public class VentanaTopPuntajes extends JDialog {
 
     private GestionPartidas gestionPartidas;
 
-    private JTable tablaPuntajes;
-    private DefaultTableModel modeloTabla;
-
     private JButton btnCerrar;
 
     // =========================
@@ -39,13 +36,12 @@ public class VentanaTopPuntajes extends JDialog {
             GestionPartidas gestionPartidas
     ) {
 
-        super(menuPrincipal, "Top de Puntajes", true);
+        super(menuPrincipal, "Resultados de partidas", true);
 
         this.gestionPartidas = gestionPartidas;
 
         configurarVentana();
         crearComponentes();
-        cargarPuntajes();
     }
 
     // =========================
@@ -69,9 +65,61 @@ public class VentanaTopPuntajes extends JDialog {
         setLayout(new BorderLayout(10, 10));
 
         JLabel lblTitulo = new JLabel(
-                "MEJORES PUNTAJES",
+                "RESULTADOS DE PARTIDAS",
                 SwingConstants.CENTER
         );
+
+        // Permite separar el top y el historial en pestañas
+        JTabbedPane pestañas = new JTabbedPane();
+
+        pestañas.addTab(
+                "Top de Puntajes",
+                crearPanelTop()
+        );
+
+        pestañas.addTab(
+                "Historial",
+                crearPanelHistorial()
+        );
+
+        btnCerrar = new JButton("Cerrar");
+
+        JPanel panelBoton = new JPanel();
+        panelBoton.add(btnCerrar);
+
+        add(lblTitulo, BorderLayout.NORTH);
+        add(pestañas, BorderLayout.CENTER);
+        add(panelBoton, BorderLayout.SOUTH);
+
+        btnCerrar.addActionListener(e -> dispose());
+    }
+
+    // =========================
+    // PANEL DEL TOP
+    // =========================
+
+    private JPanel crearPanelTop() {
+
+        JPanel panelTop = new JPanel(
+                new GridLayout(2, 1, 10, 10)
+        );
+
+        JTable tablaTop = crearTablaTop();
+
+        JScrollPane scrollTop
+                = new JScrollPane(tablaTop);
+
+        panelTop.add(scrollTop);
+        panelTop.add(crearGrafica());
+
+        return panelTop;
+    }
+
+    // =========================
+    // TABLA DEL TOP
+    // =========================
+
+    private JTable crearTablaTop() {
 
         String[] columnas = {
             "Posición",
@@ -81,47 +129,36 @@ public class VentanaTopPuntajes extends JDialog {
             "Fecha"
         };
 
-        modeloTabla = new DefaultTableModel(columnas, 0) {
+        DefaultTableModel modelo
+                = crearModeloTabla(columnas);
 
-            // Evita que el usuario pueda editar las celdas
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
+        Partida[] partidasOrdenadas
+                = gestionPartidas.obtenerPartidasOrdenadas();
 
-        tablaPuntajes = new JTable(modeloTabla);
+        int cantidad
+                = gestionPartidas.getCantidadPartidas();
 
-        JScrollPane scrollTabla
-                = new JScrollPane(tablaPuntajes);
+        // Agrega todas las partidas ordenadas por puntaje
+        for (int i = 0; i < cantidad; i++) {
 
-        scrollTabla.setPreferredSize(
-                new Dimension(620, 290)
-        );
+            Partida partida = partidasOrdenadas[i];
 
-        btnCerrar = new JButton("Cerrar");
+            Object[] fila = {
+                i + 1,
+                partida.getNombrePiloto(),
+                partida.getTipoNave(),
+                partida.getPuntaje(),
+                partida.getFecha()
+            };
 
-        JPanel panelBoton = new JPanel();
-        panelBoton.add(btnCerrar);
+            modelo.addRow(fila);
+        }
 
-        // Coloca la tabla y la gráfica una debajo de la otra
-        JPanel panelCentro = new JPanel(
-                new GridLayout(2, 1, 10, 10)
-        );
-
-        panelCentro.add(scrollTabla);
-        panelCentro.add(crearGrafica());
-
-        add(lblTitulo, BorderLayout.NORTH);
-        add(panelCentro, BorderLayout.CENTER);
-        add(panelBoton, BorderLayout.SOUTH);
-
-        // Cierra solamente esta ventana
-        btnCerrar.addActionListener(e -> dispose());
+        return new JTable(modelo);
     }
-    
+
     // =========================
-    // CREAR GRÁFICA
+    // GRÁFICA DEL TOP
     // =========================
 
     private ChartPanel crearGrafica() {
@@ -132,19 +169,19 @@ public class VentanaTopPuntajes extends JDialog {
         Partida[] partidasOrdenadas
                 = gestionPartidas.obtenerPartidasOrdenadas();
 
-        int cantidad = gestionPartidas.getCantidadPartidas();
+        int cantidad
+                = gestionPartidas.getCantidadPartidas();
 
-        // La gráfica también muestra solamente los diez mejores
+        /*
+         * La tabla muestra todos los resultados
+         * La gráfica solo muestra los primeros diez para que sea legible
+         */
         int limite = Math.min(cantidad, 10);
 
         for (int i = 0; i < limite; i++) {
 
             Partida partida = partidasOrdenadas[i];
 
-            /*
-             * Se agrega la posición al nombre para evitar
-             * problemas si el mismo piloto aparece varias veces
-             */
             String nombre = (i + 1)
                     + ". "
                     + partida.getNombrePiloto();
@@ -157,7 +194,7 @@ public class VentanaTopPuntajes extends JDialog {
         }
 
         JFreeChart grafica = ChartFactory.createBarChart(
-                "Desempeño de los mejores pilotos",
+                "Mejores 10 puntajes",
                 "Piloto",
                 "Puntaje",
                 datos,
@@ -171,22 +208,58 @@ public class VentanaTopPuntajes extends JDialog {
     }
 
     // =========================
-    // CARGAR PUNTAJES
+    // PANEL DEL HISTORIAL
     // =========================
 
-    private void cargarPuntajes() {
+    private JPanel crearPanelHistorial() {
 
-        Partida[] partidasOrdenadas
-                = gestionPartidas.obtenerPartidasOrdenadas();
+        JPanel panelHistorial = new JPanel(
+                new BorderLayout()
+        );
 
-        int cantidad = gestionPartidas.getCantidadPartidas();
+        JTable tablaHistorial = crearTablaHistorial();
 
-        // Muestra como máximo las diez mejores partidas
-        int limite = Math.min(cantidad, 10);
+        JScrollPane scrollHistorial
+                = new JScrollPane(tablaHistorial);
 
-        for (int i = 0; i < limite; i++) {
+        panelHistorial.add(
+                scrollHistorial,
+                BorderLayout.CENTER
+        );
 
-            Partida partida = partidasOrdenadas[i];
+        return panelHistorial;
+    }
+
+    // =========================
+    // TABLA DEL HISTORIAL
+    // =========================
+
+    private JTable crearTablaHistorial() {
+
+        String[] columnas = {
+            "No.",
+            "Piloto",
+            "Nave",
+            "Puntaje",
+            "Fecha"
+        };
+
+        DefaultTableModel modelo
+                = crearModeloTabla(columnas);
+
+        Partida[] partidas
+                = gestionPartidas.getPartidas();
+
+        int cantidad
+                = gestionPartidas.getCantidadPartidas();
+
+        /*
+         * Lee el arreglo original
+         * Por eso aparecen en el orden en que se jugaron
+         */
+        for (int i = 0; i < cantidad; i++) {
+
+            Partida partida = partidas[i];
 
             Object[] fila = {
                 i + 1,
@@ -196,7 +269,31 @@ public class VentanaTopPuntajes extends JDialog {
                 partida.getFecha()
             };
 
-            modeloTabla.addRow(fila);
+            modelo.addRow(fila);
         }
+
+        return new JTable(modelo);
+    }
+
+    // =========================
+    // MODELO DE TABLA
+    // =========================
+
+    private DefaultTableModel crearModeloTabla(
+            String[] columnas
+    ) {
+
+        return new DefaultTableModel(columnas, 0) {
+
+            // Evita que el usuario cambie los resultados
+            @Override
+            public boolean isCellEditable(
+                    int fila,
+                    int columna
+            ) {
+
+                return false;
+            }
+        };
     }
 }
