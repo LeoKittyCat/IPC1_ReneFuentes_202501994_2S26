@@ -51,7 +51,8 @@ public class PanelJuego extends JPanel {
     public PanelJuego(Piloto piloto) {
 
         this.piloto = piloto;
-
+        
+        iniciarGeneracionObjetos();
         asignarVelocidad();
         configurarPanel();
         configurarTeclado();
@@ -181,9 +182,13 @@ public class PanelJuego extends JPanel {
         timerMovimiento = new Timer(16, e -> {
 
             actualizarPosicion();
+
             detectarColisiones();
+            detectarColisionesConObjetos();
+
             eliminarProyectilesInactivos();
             eliminarEnemigosInactivos();
+            eliminarObjetosInactivos();
 
             repaint();
         });
@@ -244,6 +249,22 @@ public class PanelJuego extends JPanel {
     }
     
     // =========================
+    // OBJETOS ESPECIALES
+    // =========================
+
+    // Guarda los premios y obstáculos que aparecen
+    private final ObjetoEspacial[] objetosEspaciales
+            = new ObjetoEspacial[30];
+
+    private int cantidadObjetos = 0;
+
+    private Timer timerObjetos;
+    private Timer timerBloqueo;
+
+    // Indica si un Bludger bloqueó la nave
+    private boolean naveBloqueada = false;
+    
+    // =========================
     // PROYECTILES
     // =========================
 
@@ -277,7 +298,11 @@ public class PanelJuego extends JPanel {
     // =========================
 
     private void actualizarPosicion() {
-
+        
+        // No permite moverse mientras el Bludger este activo
+                if (naveBloqueada) {
+            return;
+        }
         /*
          * Estas condiciones son independientes
          * Por eso puede moverse vertical y horizontalmente a la vez
@@ -398,9 +423,52 @@ public class PanelJuego extends JPanel {
 
         dibujarEstrellas(g);
         dibujarEnemigos(g);
+        dibujarObjetosEspaciales(g);
         dibujarNave(g);
         dibujarProyectiles(g);
         dibujarPuntaje(g);
+    }
+    // =========================
+    // DIBUJO DE OBJETOS
+    // =========================
+
+    private void dibujarObjetosEspaciales(Graphics g) {
+
+        for (int i = 0; i < cantidadObjetos; i++) {
+
+            ObjetoEspacial objeto = objetosEspaciales[i];
+
+            if (objeto == null || !objeto.isActivo()) {
+                continue;
+            }
+
+            int x = objeto.getPosicionX();
+            int y = objeto.getPosicionY();
+
+            switch (objeto.getTipo()) {
+
+                case ObjetoEspacial.SNITCH:
+
+                    // Snitch dorado
+                    g.setColor(Color.YELLOW);
+                    g.fillOval(x, y, 35, 35);
+                    break;
+
+                case ObjetoEspacial.BLUDGER:
+
+                    // Asteroide gris
+                    g.setColor(Color.GRAY);
+                    g.fillOval(x, y, 35, 35);
+                    break;
+
+                case ObjetoEspacial.QUAFFLE:
+
+                    // Contenedor azul
+                    g.setColor(Color.BLUE);
+                    g.fillRect(x, y, 35, 35);
+                    break;
+            }
+        }
     }
     
     // =========================
@@ -417,6 +485,16 @@ public class PanelJuego extends JPanel {
                 15,
                 20
         );
+        
+                if (naveBloqueada) {
+
+            g.setColor(Color.RED);
+            g.drawString(
+                    "Nave bloqueada",
+                    15,
+                    40
+            );
+        }
     }
     
     // =========================
@@ -575,6 +653,15 @@ public class PanelJuego extends JPanel {
             timerEnemigos.stop();
         }
         
+        // Timers de los objetos o perks o como se llamen
+        if (timerObjetos != null) {
+            timerObjetos.stop();
+        }
+
+        if (timerBloqueo != null) {
+            timerBloqueo.stop();
+        }
+        
 
         super.removeNotify();
     }
@@ -664,7 +751,7 @@ public class PanelJuego extends JPanel {
                     proyectil.detener();
                     enemigo.detener();
 
-                    puntaje += 10;
+                    // lo comento para que  no de puntos puntaje += 10;
 
                     // Un proyectil solo puede destruir un enemigo
                     break;
@@ -695,4 +782,178 @@ public class PanelJuego extends JPanel {
                 && proyectilY < enemigoY + enemigo.getAlto()
                 && proyectilY + 4 > enemigoY;
     }
+        // =========================
+        // GENERACIÓN DE OBJETOS
+        // =========================
+
+        private void iniciarGeneracionObjetos() {
+
+            // Crea un objeto especial cada cinco segundos
+            timerObjetos = new Timer(5000, e -> {
+                generarObjetoEspacial();
+            });
+
+            timerObjetos.start();
+        }
+
+        private void generarObjetoEspacial() {
+
+            // Evita superar el tamaño del arreglo
+            if (cantidadObjetos >= objetosEspaciales.length) {
+                return;
+            }
+
+            int altoDisponible = getHeight() - 35;
+
+            if (altoDisponible <= 0) {
+                return;
+            }
+
+            int posicionX = getWidth() + 35;
+            int posicionY = random.nextInt(altoDisponible);
+
+            String tipo;
+            int numeroAleatorio = random.nextInt(10);
+
+            /*
+             * El Snitch aparece menos veces
+             * Los otros dos objetos son más comunes
+             */
+            if (numeroAleatorio == 0) {
+                tipo = ObjetoEspacial.SNITCH;
+
+            } else if (numeroAleatorio <= 4) {
+                tipo = ObjetoEspacial.BLUDGER;
+
+            } else {
+                tipo = ObjetoEspacial.QUAFFLE;
+            }
+
+            ObjetoEspacial nuevoObjeto = new ObjetoEspacial(
+                    posicionX,
+                    posicionY,
+                    4,
+                    tipo,
+                    this
+            );
+
+            objetosEspaciales[cantidadObjetos] = nuevoObjeto;
+            cantidadObjetos++;
+
+            // Inicia el movimiento independiente del objeto
+            nuevoObjeto.start();
+        }
+        
+        // =========================
+        // COLISIÓN CON OBJETOS
+        // =========================
+
+        private void detectarColisionesConObjetos() {
+
+            for (int i = 0; i < cantidadObjetos; i++) {
+
+                ObjetoEspacial objeto = objetosEspaciales[i];
+
+                if (objeto == null || !objeto.isActivo()) {
+                    continue;
+                }
+
+                if (naveTocaObjeto(objeto)) {
+
+                    // Evita aplicar el efecto varias veces
+                    objeto.detener();
+
+                    aplicarEfectoObjeto(objeto);
+                }
+            }
+        }
+
+        private boolean naveTocaObjeto(ObjetoEspacial objeto) {
+
+            return naveX < objeto.getPosicionX() + objeto.getAncho()
+                    && naveX + anchoNave > objeto.getPosicionX()
+                    && naveY < objeto.getPosicionY() + objeto.getAlto()
+                    && naveY + altoNave > objeto.getPosicionY();
+        }
+        
+        // =========================
+        // EFECTOS DE OBJETOS
+        // =========================
+
+        private void aplicarEfectoObjeto(ObjetoEspacial objeto) {
+
+            switch (objeto.getTipo()) {
+
+                case ObjetoEspacial.SNITCH:
+
+                    // Suma puntos y destruye los enemigos visibles
+                    puntaje += 150;
+                    destruirEnemigosVisibles();
+                    break;
+
+                case ObjetoEspacial.BLUDGER:
+
+                    // Bloquea el movimiento durante dos segundos
+                    bloquearNave();
+                    break;
+
+                case ObjetoEspacial.QUAFFLE:
+
+                    // Suma diez puntos al puntaje actual
+                    puntaje += 10;
+                    break;
+            }
+        }
+
+        private void destruirEnemigosVisibles() {
+
+            for (int i = 0; i < cantidadEnemigos; i++) {
+
+                if (enemigos[i] != null) {
+                    enemigos[i].detener();
+                }
+            }
+        }
+
+        private void bloquearNave() {
+
+            naveBloqueada = true;
+
+            // Reinicia el tiempo si toca otro Bludger
+            if (timerBloqueo != null) {
+                timerBloqueo.stop();
+            }
+
+            timerBloqueo = new Timer(2000, e -> {
+                naveBloqueada = false;
+            });
+
+            // Hace que el timer se ejecute solamente una vez
+            timerBloqueo.setRepeats(false);
+            timerBloqueo.start();
+        }
+        
+        // =========================
+        // LIMPIEZA DE OBJETOS
+        // =========================
+
+        private void eliminarObjetosInactivos() {
+
+            for (int i = 0; i < cantidadObjetos; i++) {
+
+                if (objetosEspaciales[i] == null
+                        || !objetosEspaciales[i].isActivo()) {
+
+                    // Cierra el espacio vacío dentro del arreglo
+                    for (int j = i; j < cantidadObjetos - 1; j++) {
+                        objetosEspaciales[j] = objetosEspaciales[j + 1];
+                    }
+
+                    objetosEspaciales[cantidadObjetos - 1] = null;
+                    cantidadObjetos--;
+
+                    i--;
+                }
+            }
+        }
 }
