@@ -165,9 +165,15 @@ public class MenuPrincipal extends JFrame {
 
     private void mostrarTopPuntajes() {
 
-        JOptionPane.showMessageDialog(
-                this,
-                "Todavía no hay partidas registradas"
-        );
+        btnTopPuntajes.addActionListener(e -> {
+
+        VentanaTopPuntajes ventana
+                = new VentanaTopPuntajes(
+                        this,
+                        gestionPartidas
+                );
+
+        ventana.setVisible(true);
+    });
     }
 }
