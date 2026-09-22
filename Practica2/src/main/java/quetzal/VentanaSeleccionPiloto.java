@@ -16,6 +16,7 @@ public class VentanaSeleccionPiloto extends JDialog {
 
     private MenuPrincipal menuPrincipal;
     private GestionPilotos gestionPilotos;
+    private GestionPartidas gestionPartidas;
 
     private JComboBox<String> comboPilotos;
     private JButton btnComenzar;
@@ -27,12 +28,15 @@ public class VentanaSeleccionPiloto extends JDialog {
 
     public VentanaSeleccionPiloto(
             MenuPrincipal menuPrincipal,
-            GestionPilotos gestionPilotos
+            GestionPilotos gestionPilotos,
+            GestionPartidas gestionPartidas
     ) {
+
         super(menuPrincipal, "Seleccionar piloto", true);
 
         this.menuPrincipal = menuPrincipal;
         this.gestionPilotos = gestionPilotos;
+        this.gestionPartidas = gestionPartidas;
 
         configurarVentana();
         crearComponentes();
@@ -138,10 +142,11 @@ public class VentanaSeleccionPiloto extends JDialog {
         Piloto pilotoSeleccionado =
                 gestionPilotos.getPilotos()[posicionSeleccionada];
 
-        VentanaJuego ventanaJuego = new VentanaJuego(
-                menuPrincipal,
-                pilotoSeleccionado
-        );
+    VentanaJuego ventanaJuego = new VentanaJuego(
+            menuPrincipal,
+            pilotoSeleccionado,
+            gestionPartidas
+    );
 
         menuPrincipal.setVisible(false);
 

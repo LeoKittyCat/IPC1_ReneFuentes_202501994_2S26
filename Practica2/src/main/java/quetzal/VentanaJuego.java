@@ -17,6 +17,7 @@ public class VentanaJuego extends JFrame {
     private MenuPrincipal menuPrincipal;
     private Piloto piloto;
     private PanelJuego panelJuego;
+    private GestionPartidas gestionPartidas;
 
     // =========================
     // CONSTRUCTOR
@@ -24,10 +25,13 @@ public class VentanaJuego extends JFrame {
 
     public VentanaJuego(
             MenuPrincipal menuPrincipal,
-            Piloto piloto
+            Piloto piloto,
+            GestionPartidas gestionPartidas
     ) {
+
         this.menuPrincipal = menuPrincipal;
         this.piloto = piloto;
+        this.gestionPartidas = gestionPartidas;
 
         configurarVentana();
         crearComponentes();
@@ -70,7 +74,7 @@ public class VentanaJuego extends JFrame {
         panelInformacion.add(lblNave);
         panelInformacion.add(lblPuntaje);
 
-        panelJuego = new PanelJuego(piloto);
+        panelJuego = new PanelJuego(piloto,gestionPartidas);
 
         add(panelInformacion, BorderLayout.NORTH);
         add(panelJuego, BorderLayout.CENTER);

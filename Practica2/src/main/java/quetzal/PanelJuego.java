@@ -8,14 +8,27 @@ import java.awt.event.KeyEvent;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 import java.util.Random;
+import java.awt.Window;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 public class PanelJuego extends JPanel {
+    
+    // =========================
+    // TIEMPO DE PARTIDA
+    // =========================
+
+    private Timer timerPartida;
+
+    private int tiempoRestante = 60;
+    private boolean partidaFinalizada = false;
 
     // =========================
     // DATOS DEL PILOTO
     // =========================
 
     private Piloto piloto;
+    private GestionPartidas gestionPartidas;
 
     // =========================
     // POSICIÓN Y TAMAÑO
@@ -48,16 +61,42 @@ public class PanelJuego extends JPanel {
     // CONSTRUCTOR
     // =========================
 
-    public PanelJuego(Piloto piloto) {
+    public PanelJuego(
+            Piloto piloto,
+            GestionPartidas gestionPartidas
+    ) {
 
         this.piloto = piloto;
-        
-        iniciarGeneracionObjetos();
+        this.gestionPartidas = gestionPartidas;
+
         asignarVelocidad();
         configurarPanel();
         configurarTeclado();
         iniciarMovimiento();
         iniciarGeneracionEnemigos();
+        iniciarGeneracionObjetos();
+        iniciarTemporizadorPartida();
+    }
+    
+    // =========================
+    // TEMPORIZADOR DE PARTIDA
+    // =========================
+
+    private void iniciarTemporizadorPartida() {
+
+        // Disminuye el tiempo una vez por segundo
+        timerPartida = new Timer(1000, e -> {
+
+            tiempoRestante--;
+
+            if (tiempoRestante <= 0) {
+                finalizarPartida();
+            }
+
+            repaint();
+        });
+
+        timerPartida.start();
     }
 
     // =========================
@@ -420,7 +459,8 @@ public class PanelJuego extends JPanel {
 
         // Limpia el dibujo anterior antes de volver a pintar
         super.paintComponent(g);
-
+        
+        dibujarTiempo(g);
         dibujarEstrellas(g);
         dibujarEnemigos(g);
         dibujarObjetosEspaciales(g);
@@ -428,6 +468,23 @@ public class PanelJuego extends JPanel {
         dibujarProyectiles(g);
         dibujarPuntaje(g);
     }
+    
+    // =========================
+    // DIBUJO DEL TIEMPO
+    // =========================
+
+    private void dibujarTiempo(Graphics g) {
+
+        g.setColor(Color.WHITE);
+
+        // Coloca el tiempo cerca de la esquina superior derecha
+        g.drawString(
+                "Tiempo: " + tiempoRestante,
+                getWidth() - 100,
+                20
+        );
+    }
+    
     // =========================
     // DIBUJO DE OBJETOS
     // =========================
@@ -639,29 +696,14 @@ public class PanelJuego extends JPanel {
     }
 
     // =========================
-    // DETENER TIMER
+    // CERRAR JUEGO
     // =========================
 
     @Override
     public void removeNotify() {
 
-        // Detiene el movimiento cuando el panel se cierra
-        if (timerMovimiento != null) {
-            timerMovimiento.stop();
-        }
-        if (timerEnemigos != null) {
-            timerEnemigos.stop();
-        }
-        
-        // Timers de los objetos o perks o como se llamen
-        if (timerObjetos != null) {
-            timerObjetos.stop();
-        }
-
-        if (timerBloqueo != null) {
-            timerBloqueo.stop();
-        }
-        
+        // Detiene los timers e hilos cuando se cierra la ventana
+        detenerJuego();
 
         super.removeNotify();
     }
@@ -953,6 +995,97 @@ public class PanelJuego extends JPanel {
                     cantidadObjetos--;
 
                     i--;
+                }
+            }
+        }
+        
+        // =========================
+        // FINALIZAR PARTIDA
+        // =========================
+
+        private void finalizarPartida() {
+
+            // Evita guardar la misma partida más de una vez
+            if (partidaFinalizada) {
+                return;
+            }
+
+            partidaFinalizada = true;
+
+            detenerJuego();
+
+            Partida nuevaPartida = new Partida(
+                    piloto.getNombre(),
+                    piloto.getTipoNave(),
+                    puntaje
+            );
+
+            gestionPartidas.registrarPartida(nuevaPartida);
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Partida finalizada\n"
+                    + "Piloto: " + piloto.getNombre() + "\n"
+                    + "Puntaje: " + puntaje,
+                    "Fin de la partida",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            // Obtiene la ventana que contiene este panel
+            Window ventana = SwingUtilities.getWindowAncestor(this);
+
+            if (ventana != null) {
+                ventana.dispose();
+            }
+        }
+        
+        // =========================
+        // DETENER JUEGO
+        // =========================
+
+        private void detenerJuego() {
+
+            if (timerMovimiento != null) {
+                timerMovimiento.stop();
+            }
+
+            if (timerEnemigos != null) {
+                timerEnemigos.stop();
+            }
+
+            if (timerObjetos != null) {
+                timerObjetos.stop();
+            }
+
+            if (timerBloqueo != null) {
+                timerBloqueo.stop();
+            }
+
+            if (timerPartida != null) {
+                timerPartida.stop();
+            }
+
+            // Detiene los proyectiles que siguen en pantalla
+            for (int i = 0; i < cantidadProyectiles; i++) {
+
+                if (proyectiles[i] != null) {
+                    proyectiles[i].detener();
+                }
+            }
+
+            // Detiene los enemigos que siguen en pantalla
+            for (int i = 0; i < cantidadEnemigos; i++) {
+
+                if (enemigos[i] != null) {
+                    enemigos[i].detener();
+                }
+            }
+
+            // Detiene los objetos que siguen en pantalla
+            for (int i = 0; i < cantidadObjetos; i++) {
+
+                if (objetosEspaciales[i] != null) {
+                    objetosEspaciales[i].detener();
                 }
             }
         }

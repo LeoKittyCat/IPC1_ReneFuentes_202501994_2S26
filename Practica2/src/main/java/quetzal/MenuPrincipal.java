@@ -27,13 +27,20 @@ public class MenuPrincipal extends JFrame {
     // CONSTRUCTOR
     // =========================
 
-    public MenuPrincipal(GestionPilotos gestionPilotos) {
+    public MenuPrincipal(GestionPilotos gestionPilotos, GestionPartidas gestionPartidas) {
 
         this.gestionPilotos = gestionPilotos;
+        this.gestionPartidas = gestionPartidas;
 
         configurarVentana();
         crearComponentes();
     }
+    
+    // =========================
+    // GESTIONES
+    // =========================
+
+    private GestionPartidas gestionPartidas;
 
     // =========================
     // CONFIGURAR VENTANA
@@ -142,11 +149,12 @@ public class MenuPrincipal extends JFrame {
             return;
         }
 
-        VentanaSeleccionPiloto ventana =
-                new VentanaSeleccionPiloto(
-                        this,
-                        gestionPilotos
-                );
+    VentanaSeleccionPiloto ventana
+            = new VentanaSeleccionPiloto(
+                    this,
+                    gestionPilotos,
+                    gestionPartidas
+            );
 
         ventana.setVisible(true);
     }

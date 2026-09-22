@@ -14,9 +14,11 @@ public class Main {
 
             // Crea el objeto que administra todos los pilotos
             GestionPilotos gestionPilotos = new GestionPilotos();
+            GestionPartidas gestionPartidas = new GestionPartidas();
+            
 
             // Abre el menú principal usando la misma gestión
-            MenuPrincipal menu = new MenuPrincipal(gestionPilotos);
+            MenuPrincipal menu = new MenuPrincipal(gestionPilotos,gestionPartidas);
             menu.setVisible(true);
         });
     }
