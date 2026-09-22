@@ -7,6 +7,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import javax.swing.JPanel;
 import javax.swing.Timer;
+import java.util.Random;
 
 public class PanelJuego extends JPanel {
 
@@ -55,6 +56,7 @@ public class PanelJuego extends JPanel {
         configurarPanel();
         configurarTeclado();
         iniciarMovimiento();
+        iniciarGeneracionEnemigos();
     }
 
     // =========================
@@ -174,15 +176,71 @@ public class PanelJuego extends JPanel {
         /*
          * Revisa las teclas aproximadamente 60 veces por segundo
          * Esto evita depender de la repetición del teclado de Windows
-         */
+         */ 
+        // Esto no se si venia en la gui pero la verdadd asi se controla mejor
         timerMovimiento = new Timer(16, e -> {
-            
-            eliminarProyectilesInactivos();
+
             actualizarPosicion();
+            detectarColisiones();
+            eliminarProyectilesInactivos();
+            eliminarEnemigosInactivos();
+
             repaint();
         });
 
         timerMovimiento.start();
+    }
+    
+    // =========================
+    // GENERACIÓN DE ENEMIGOS
+    // =========================
+
+    private void iniciarGeneracionEnemigos() {
+
+        // Crea un enemigo nuevo cada segundo y medio
+        timerEnemigos = new Timer(1500, e -> {
+            generarEnemigo();
+        });
+
+        timerEnemigos.start();
+    }
+
+    private void generarEnemigo() {
+
+        // Evita crear más enemigos si el arreglo está lleno
+        if (cantidadEnemigos >= enemigos.length) {
+            return;
+        }
+
+        int altoDisponible = getHeight() - 35;
+
+        // Evita generar una posición inválida al iniciar la ventana
+        if (altoDisponible <= 0) {
+            return;
+        }
+
+        // El enemigo aparece en una altura aleatoria
+        int posicionY = random.nextInt(altoDisponible);
+
+        // Aparece un poco afuera del lado derecho
+        int posicionX = getWidth() + 45;
+
+        // La velocidad también puede variar un poco
+        // Genera numeros del 0 al 2 y le suma 3
+        int velocidadEnemigo = 3 + random.nextInt(3);
+
+        Enemigo nuevoEnemigo = new Enemigo(
+                posicionX,
+                posicionY,
+                velocidadEnemigo,
+                this
+        );
+
+        enemigos[cantidadEnemigos] = nuevoEnemigo;
+        cantidadEnemigos++;
+
+        // Inicia el hilo independiente del enemigo
+        nuevoEnemigo.start();
     }
     
     // =========================
@@ -199,6 +257,20 @@ public class PanelJuego extends JPanel {
 
     // Evita crear varios disparos por mantener espacio presionado
     private boolean espacioPresionado = false;
+    
+    // =========================
+    // ENEMIGOS
+    // =========================
+
+    // Guarda los enemigos que están dentro del juego
+    private final Enemigo[] enemigos = new Enemigo[50];
+
+    private int cantidadEnemigos = 0;
+
+    // Se encarga de crear enemigos cada cierto tiempo
+    private Timer timerEnemigos;
+
+    private final Random random = new Random();
 
     // =========================
     // ACTUALIZAR POSICIÓN
@@ -325,8 +397,64 @@ public class PanelJuego extends JPanel {
         super.paintComponent(g);
 
         dibujarEstrellas(g);
+        dibujarEnemigos(g);
         dibujarNave(g);
         dibujarProyectiles(g);
+        dibujarPuntaje(g);
+    }
+    
+    // =========================
+    // DIBUJO DEL PUNTAJE
+    // =========================
+
+    private void dibujarPuntaje(Graphics g) {
+
+        g.setColor(Color.WHITE);
+
+        // Muestra el puntaje en la esquina superior izquierda
+        g.drawString(
+                "Puntaje: " + puntaje,
+                15,
+                20
+        );
+    }
+    
+    // =========================
+    // DIBUJO DE ENEMIGOS
+    // =========================
+
+    private void dibujarEnemigos(Graphics g) {
+
+        for (int i = 0; i < cantidadEnemigos; i++) {
+
+            Enemigo enemigo = enemigos[i];
+
+            if (enemigo != null && enemigo.isActivo()) {
+
+                int x = enemigo.getPosicionX();
+                int y = enemigo.getPosicionY();
+
+                // Dibuja el cuerpo del enemigo
+                g.setColor(Color.RED);
+
+                g.fillRect(
+                        x,
+                        y,
+                        enemigo.getAncho(),
+                        enemigo.getAlto()
+                );
+
+                // Dibuja una ventana para distinguirlo
+                g.setColor(Color.YELLOW);
+
+                g.fillOval(
+                        x + 8,
+                        y + 10,
+                        12,
+                        12
+                );
+            }
+        }
     }
     
     // =========================
@@ -443,6 +571,10 @@ public class PanelJuego extends JPanel {
         if (timerMovimiento != null) {
             timerMovimiento.stop();
         }
+        if (timerEnemigos != null) {
+            timerEnemigos.stop();
+        }
+        
 
         super.removeNotify();
     }
@@ -470,5 +602,97 @@ public class PanelJuego extends JPanel {
                 i--;
             }
         }
+    }
+    
+    // =========================
+    // LIMPIEZA DE ENEMIGOS
+    // =========================
+
+    private void eliminarEnemigosInactivos() {
+
+        for (int i = 0; i < cantidadEnemigos; i++) {
+
+            if (enemigos[i] == null
+                    || !enemigos[i].isActivo()) {
+
+                // Mueve los enemigos para cerrar el espacio vacío
+                for (int j = i; j < cantidadEnemigos - 1; j++) {
+                    enemigos[j] = enemigos[j + 1];
+                }
+
+                enemigos[cantidadEnemigos - 1] = null;
+                cantidadEnemigos--;
+
+                // Revisa nuevamente la posición actual
+                i--;
+            }
+        }
+    }
+    
+    // =========================
+    // PUNTAJE
+    // =========================
+
+    private int puntaje = 0;
+    
+    // =========================
+    // COLISIONES
+    // =========================
+
+    private void detectarColisiones() {
+
+        // Revisa cada proyectil contra cada enemigo
+        for (int i = 0; i < cantidadProyectiles; i++) {
+
+            Proyectil proyectil = proyectiles[i];
+
+            if (proyectil == null || !proyectil.isActivo()) {
+                continue;
+            }
+
+            for (int j = 0; j < cantidadEnemigos; j++) {
+
+                Enemigo enemigo = enemigos[j];
+
+                if (enemigo == null || !enemigo.isActivo()) {
+                    continue;
+                }
+
+                if (hayColision(proyectil, enemigo)) {
+
+                    // Desactiva ambos objetos cuando chocan
+                    proyectil.detener();
+                    enemigo.detener();
+
+                    puntaje += 10;
+
+                    // Un proyectil solo puede destruir un enemigo
+                    break;
+                }
+            }
+        }
+    }
+    
+        private boolean hayColision(
+            Proyectil proyectil,
+            Enemigo enemigo
+    ) {
+
+        int proyectilX = proyectil.getPosicionX();
+        int proyectilY = proyectil.getPosicionY();
+
+        int enemigoX = enemigo.getPosicionX();
+        int enemigoY = enemigo.getPosicionY();
+
+        /*
+         * Revisa si el rectángulo del proyectil
+         * está tocando el rectángulo del enemigo
+         */
+        
+        // 14 y 4 son el alto y ancho con lo que dibujamos el proyectil
+        return proyectilX < enemigoX + enemigo.getAncho()
+                && proyectilX + 14 > enemigoX
+                && proyectilY < enemigoY + enemigo.getAlto()
+                && proyectilY + 4 > enemigoY;
     }
 }

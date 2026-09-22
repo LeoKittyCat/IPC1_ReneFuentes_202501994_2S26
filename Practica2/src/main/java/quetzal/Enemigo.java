@@ -1,7 +1,6 @@
 package quetzal;
 
-// El proyectil usa su propio hilo para moverse de forma independiente
-public class Proyectil extends Thread {
+public class Enemigo extends Thread {
 
     // =========================
     // ATRIBUTOS
@@ -10,7 +9,12 @@ public class Proyectil extends Thread {
     private int x;
     private int y;
 
+    private final int ancho = 45;
+    private final int alto = 35;
+
     private final int velocidad;
+
+    // volatile permite que los cambios sean vistos por los otros hilos
     private volatile boolean activo;
 
     private final PanelJuego panelJuego;
@@ -19,43 +23,46 @@ public class Proyectil extends Thread {
     // CONSTRUCTOR
     // =========================
 
-    public Proyectil(int x, int y, PanelJuego panelJuego) {
+    public Enemigo(
+            int x,
+            int y,
+            int velocidad,
+            PanelJuego panelJuego
+    ) {
 
-        // Guarda la posición desde donde sale el disparo
         this.x = x;
         this.y = y;
-
+        this.velocidad = velocidad;
         this.panelJuego = panelJuego;
 
-        velocidad = 10;
         activo = true;
     }
 
     // =========================
-    // MOVIMIENTO DEL PROYECTIL
+    // MOVIMIENTO DEL ENEMIGO
     // =========================
 
     @Override
     public void run() {
 
-        // El proyectil continúa moviéndose mientras siga activo
+        // El enemigo avanza mientras siga activo
         while (activo) {
 
-            // Mueve el proyectil hacia la derecha
-            x += velocidad;
+            // Mueve al enemigo hacia la izquierda
+            x -= velocidad;
 
             // Lo desactiva cuando sale de la pantalla
-            if (x > panelJuego.getWidth()) {
+            if (x + ancho < 0) {
                 activo = false;
             }
 
-            // Vuelve a dibujar el panel con la nueva posición
+            // Actualiza el dibujo del juego
             panelJuego.repaint();
 
             try {
 
-                // Pequeña pausa para que el movimiento se vea fluido
-                Thread.sleep(16);
+                // Pausa pequeña para que el movimiento sea fluido
+                Thread.sleep(30);
 
             } catch (InterruptedException e) {
 
@@ -77,12 +84,20 @@ public class Proyectil extends Thread {
         return y;
     }
 
+    public int getAncho() {
+        return ancho;
+    }
+
+    public int getAlto() {
+        return alto;
+    }
+
     public boolean isActivo() {
         return activo;
     }
 
     // =========================
-    // DETENER PROYECTIL
+    // DETENER ENEMIGO
     // =========================
 
     public void detener() {
