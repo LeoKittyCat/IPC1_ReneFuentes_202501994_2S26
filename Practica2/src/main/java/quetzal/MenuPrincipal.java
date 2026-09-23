@@ -165,15 +165,11 @@ public class MenuPrincipal extends JFrame {
 
     private void mostrarTopPuntajes() {
 
-        btnTopPuntajes.addActionListener(e -> {
-
-        VentanaTopPuntajes ventana
-                = new VentanaTopPuntajes(
-                        this,
-                        gestionPartidas
-                );
+        VentanaTopPuntajes ventana = new VentanaTopPuntajes(
+                this,
+                gestionPartidas
+        );
 
         ventana.setVisible(true);
-    });
     }
 }

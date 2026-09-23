@@ -87,8 +87,9 @@ public class VentanaTopPuntajes extends JDialog {
                 crearPanelHistorial()
         );
 
-        btnGenerarReporte = new JButton("Generar reporte");
-        btnCerrar = new JButton("Cerrar");
+        btnGenerarReporte.addActionListener(e -> generarReporte());
+
+        btnCerrar.addActionListener(e -> dispose());
 
         JPanel panelBoton = new JPanel();
 
@@ -101,6 +102,8 @@ public class VentanaTopPuntajes extends JDialog {
 
         btnGenerarReporte.addActionListener(e -> {
         generarReporte();
+        
+        
     });
     }
 
