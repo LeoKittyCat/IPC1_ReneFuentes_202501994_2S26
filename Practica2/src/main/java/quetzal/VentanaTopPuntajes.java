@@ -74,25 +74,16 @@ public class VentanaTopPuntajes extends JDialog {
                 SwingConstants.CENTER
         );
 
-        // Permite separar el top y el historial en pestañas
         JTabbedPane pestañas = new JTabbedPane();
 
-        pestañas.addTab(
-                "Top de Puntajes",
-                crearPanelTop()
-        );
+        pestañas.addTab("Top de Puntajes", crearPanelTop());
+        pestañas.addTab("Historial", crearPanelHistorial());
 
-        pestañas.addTab(
-                "Historial",
-                crearPanelHistorial()
-        );
-
-        btnGenerarReporte.addActionListener(e -> generarReporte());
-
-        btnCerrar.addActionListener(e -> dispose());
+        // Crea los botones antes de agregarles sus eventos
+        btnGenerarReporte = new JButton("Generar reporte");
+        btnCerrar = new JButton("Cerrar");
 
         JPanel panelBoton = new JPanel();
-
         panelBoton.add(btnGenerarReporte);
         panelBoton.add(btnCerrar);
 
@@ -100,11 +91,8 @@ public class VentanaTopPuntajes extends JDialog {
         add(pestañas, BorderLayout.CENTER);
         add(panelBoton, BorderLayout.SOUTH);
 
-        btnGenerarReporte.addActionListener(e -> {
-        generarReporte();
-        
-        
-    });
+        btnGenerarReporte.addActionListener(e -> generarReporte());
+        btnCerrar.addActionListener(e -> dispose());
     }
 
     // =========================
