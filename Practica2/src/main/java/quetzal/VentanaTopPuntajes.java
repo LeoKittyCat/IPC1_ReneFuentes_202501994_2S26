@@ -16,6 +16,10 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.category.DefaultCategoryDataset;
+import java.awt.Desktop;
+import java.io.File;
+import java.io.IOException;
+import javax.swing.JOptionPane;
 
 public class VentanaTopPuntajes extends JDialog {
 
@@ -25,6 +29,7 @@ public class VentanaTopPuntajes extends JDialog {
 
     private GestionPartidas gestionPartidas;
 
+    private JButton btnGenerarReporte;
     private JButton btnCerrar;
 
     // =========================
@@ -82,16 +87,21 @@ public class VentanaTopPuntajes extends JDialog {
                 crearPanelHistorial()
         );
 
+        btnGenerarReporte = new JButton("Generar reporte");
         btnCerrar = new JButton("Cerrar");
 
         JPanel panelBoton = new JPanel();
+
+        panelBoton.add(btnGenerarReporte);
         panelBoton.add(btnCerrar);
 
         add(lblTitulo, BorderLayout.NORTH);
         add(pestañas, BorderLayout.CENTER);
         add(panelBoton, BorderLayout.SOUTH);
 
-        btnCerrar.addActionListener(e -> dispose());
+        btnGenerarReporte.addActionListener(e -> {
+        generarReporte();
+    });
     }
 
     // =========================
@@ -296,4 +306,54 @@ public class VentanaTopPuntajes extends JDialog {
             }
         };
     }
+    
+    // =========================
+    // GENERAR REPORTE
+    // =========================
+
+    private void generarReporte() {
+
+        try {
+
+            GeneradorReporte generador
+                    = new GeneradorReporte(gestionPartidas);
+
+            File archivoHtml = generador.generarReporte();
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "El reporte fue generado correctamente",
+                    "Reporte generado",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            // Abre el reporte usando el navegador predeterminado
+            if (Desktop.isDesktopSupported()) {
+
+                Desktop.getDesktop().browse(
+                        archivoHtml.toURI()
+                );
+
+            } else {
+
+                // Muestra la ruta si el sistema no puede abrirlo
+                JOptionPane.showMessageDialog(
+                        this,
+                        "El reporte se encuentra en:\n"
+                        + archivoHtml.getAbsolutePath()
+                );
+            }
+
+        } catch (IOException e) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se pudo generar el reporte\n"
+                    + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+    
 }
